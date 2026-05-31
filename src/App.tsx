@@ -191,20 +191,39 @@ export default function App() {
         throw new Error(`CORS or connection failure. HTTP Status: ${response.status}`);
       }
 
-      const responseData = await response.json();
-      
-      // 4. Extract reply according to specified schema variations
+      const responseText = await response.text();
       let replyText = '';
-      if (Array.isArray(responseData) && responseData.length > 0) {
-        const item = responseData[0];
-        replyText = item?.reply || item?.message || '';
-      } else if (responseData && typeof responseData === 'object') {
-        replyText = responseData.reply || responseData.message || '';
+
+      // Try parsing as JSON if it looks like JSON or content-type is JSON
+      const isJson = (response.headers.get('content-type') || '').includes('application/json') ||
+                     responseText.trim().startsWith('{') ||
+                     responseText.trim().startsWith('[');
+
+      if (isJson) {
+        try {
+          const responseData = JSON.parse(responseText);
+          if (Array.isArray(responseData) && responseData.length > 0) {
+            const item = responseData[0];
+            replyText = item?.reply || item?.message || (typeof item === 'string' ? item : '');
+          } else if (responseData && typeof responseData === 'object') {
+            replyText = responseData.reply || responseData.message || '';
+          } else if (typeof responseData === 'string') {
+            replyText = responseData;
+          }
+        } catch (e) {
+          // Fall back to raw text if JSON parsing fails
+          replyText = responseText;
+        }
       }
 
-      // Fallback
-      if (!replyText) {
-        replyText = 'Prišlo je do napake pri komunikaciji s strežnikom. Prejet odgovor nima pravilnega formata.';
+      // If replyText is still empty or it was not JSON, fallback to raw response text
+      if (!replyText.trim()) {
+        replyText = responseText;
+      }
+
+      // Fallback if we received absolutely empty response
+      if (!replyText.trim()) {
+        replyText = 'Prejet je bil prazen odgovor s strani n8n.';
       }
 
       const botMsg: Message = {
