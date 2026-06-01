@@ -17,7 +17,7 @@ import FlightForm from './components/FlightForm';
 import ChatInterface from './components/ChatInterface';
 import { FlightSearchFormState, Message, MessagePayload } from './types';
 
-const WEBHOOK_URL = 'https://bimp-primary.up.railway.app/webhook/website-chatbot';
+const WEBHOOK_URL = '/api/chat-proxy';
 
 const DEFAULT_FORM_STATE: FlightSearchFormState = {
   route: {
