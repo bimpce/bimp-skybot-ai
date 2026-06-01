@@ -16,6 +16,7 @@ import {
 import FlightForm from './components/FlightForm';
 import ChatInterface from './components/ChatInterface';
 import { FlightSearchFormState, Message, MessagePayload } from './types';
+import { generatePromptFromState } from './utils/prompt';
 
 const WEBHOOK_URL = '/api/chat-proxy';
 
@@ -51,6 +52,25 @@ export default function App() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [showValidationErrors, setShowValidationErrors] = useState<boolean>(false);
   const [showGuide, setShowGuide] = useState<boolean>(false);
+  const [inputText, setInputText] = useState<string>('');
+
+  const handleGeneratePrompt = (autoSend: boolean) => {
+    const promptText = generatePromptFromState(formState);
+    setInputText(promptText);
+    
+    if (autoSend) {
+      handleSendMessage(promptText);
+    } else {
+      // Focus on the chat message input field so the user can easily see it was prepared
+      setTimeout(() => {
+        const inputElement = document.getElementById('chat-message-input');
+        if (inputElement) {
+          inputElement.focus();
+          inputElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+    }
+  };
 
   // Initialize Session ID & Load Saved Chat History
   useEffect(() => {
@@ -103,19 +123,18 @@ export default function App() {
 
   // Clear Chat history action
   const handleClearHistory = () => {
-    if (window.confirm('Ali ste prepričani, da želite počistiti zgodovino pogovora?')) {
-      const initialMsgTime = new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' });
-      const welcome: Message = {
-        id: 'welcome-message',
-        sender: 'bot',
-        text: 'Pozdravljeni! Pomagam vam najti najboljše letalske karte. Vnesite relacijo, datume in število potnikov.',
-        timestamp: initialMsgTime,
-      };
-      setMessages([welcome]);
-      localStorage.setItem('flight_chat_history', JSON.stringify([welcome]));
-      setFormState(DEFAULT_FORM_STATE);
-      setShowValidationErrors(false);
-    }
+    const initialMsgTime = new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' });
+    const welcome: Message = {
+      id: 'welcome-message',
+      sender: 'bot',
+      text: 'Pozdravljeni! Pomagam vam najti najboljše letalske karte. Vnesite relacijo, datume in število potnikov.',
+      timestamp: initialMsgTime,
+    };
+    setMessages([welcome]);
+    localStorage.setItem('flight_chat_history', JSON.stringify([welcome]));
+    setFormState(DEFAULT_FORM_STATE);
+    setShowValidationErrors(false);
+    setInputText('');
   };
 
   // Check required validation (does not block, but will highlight inputs)
@@ -463,6 +482,7 @@ export default function App() {
               formState={formState}
               onChange={setFormState}
               showValidationErrors={showValidationErrors}
+              onGeneratePrompt={handleGeneratePrompt}
             />
           </section>
 
@@ -475,6 +495,8 @@ export default function App() {
               onClearHistory={handleClearHistory}
               formState={formState}
               onFormChange={setFormState}
+              inputText={inputText}
+              setInputText={setInputText}
             />
           </section>
 

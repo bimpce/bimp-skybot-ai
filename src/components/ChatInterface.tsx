@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { 
   Send, 
   Sparkles, 
@@ -13,6 +13,7 @@ import {
   Gem
 } from 'lucide-react';
 import { Message, FlightSearchFormState } from '../types';
+import { generatePromptFromState } from '../utils/prompt';
 
 interface ChatInterfaceProps {
   messages: Message[];
@@ -21,6 +22,8 @@ interface ChatInterfaceProps {
   onClearHistory: () => void;
   formState: FlightSearchFormState;
   onFormChange: (updater: (prev: FlightSearchFormState) => FlightSearchFormState) => void;
+  inputText: string;
+  setInputText: (text: string) => void;
 }
 
 export default function ChatInterface({ 
@@ -29,9 +32,10 @@ export default function ChatInterface({
   onSendMessage, 
   onClearHistory,
   formState,
-  onFormChange
+  onFormChange,
+  inputText,
+  setInputText
 }: ChatInterfaceProps) {
-  const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to newest message
@@ -98,6 +102,11 @@ export default function ChatInterface({
   const isPlusMinus2Active = formState.flexibility.flexibleDays === 2;
   const isCarryOnActive = formState.flexibility.carryOnOnly;
 
+  const handleLoadPromptFromForm = () => {
+    const generated = generatePromptFromState(formState);
+    setInputText(generated);
+  };
+
   return (
     <div id="chat-interface" className="flex flex-col h-[650px] lg:h-[700px] glass rounded-3xl overflow-hidden border-white/55 shadow-xl">
       
@@ -113,24 +122,24 @@ export default function ChatInterface({
           <div>
             <div className="flex items-center gap-1.5">
               <h3 className="font-bold text-sm tracking-tight text-white flex items-center gap-0.5">
-                SkyBot <span className="text-blue-400 italic font-extrabold">AI</span>
+                Klepet z asistentom
               </h3>
               <span className="text-[9px] bg-blue-500/30 text-blue-200 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
                 n8n Live
               </span>
             </div>
-            <p className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold block -mt-0.5">Letalski pomočnik</p>
+            <p className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold block -mt-0.5">Aktivni pogovor</p>
           </div>
         </div>
         
         <button
           type="button"
           onClick={onClearHistory}
-          title="Počisti zgodovino"
-          className="p-1.5 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition-colors text-xs flex items-center gap-1 font-semibold"
+          title="Nova poizvedba"
+          className="p-1.5 hover:bg-slate-850 text-slate-350 hover:text-white rounded-xl transition-all text-xs flex items-center gap-1 font-extrabold bg-slate-800/60 border border-slate-700/50 hover:border-slate-600 cursor-pointer select-none px-3 py-1.5 shadow-sm"
         >
-          <RefreshCw className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Počisti</span>
+          <RefreshCw className="w-3.5 h-3.5 text-blue-400" />
+          <span>nova poizvedba</span>
         </button>
       </div>
 
@@ -229,95 +238,9 @@ export default function ChatInterface({
 
       {/* Suggestions and Text Input Panel */}
       <div className="p-4 bg-white/70 backdrop-blur border-t border-white/40 space-y-3">
-        
-        {/* Quick Suggestion Tags */}
-        <div className="text-[11px] text-slate-400 font-bold tracking-wide uppercase px-1 flex items-center gap-1">
-          <span>Hitri predlogi:</span>
-          <span className="text-[10px] text-slate-400 lowercase font-semibold normal-case">(posodobi formo podatkov)</span>
-        </div>
-
-        <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
-          <button
-            type="button"
-            onClick={() => handleSuggestionClick('povratna')}
-            className={`px-3 py-1.5 rounded-full text-[11px] font-bold border whitespace-nowrap transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
-              isPovratnaActive 
-                ? 'bg-blue-650 text-white border-blue-650' 
-                : 'bg-white/85 text-slate-650 border-slate-200/80 hover:border-blue-400 hover:text-blue-705'
-            }`}
-          >
-            <CalendarDays className="w-3.5 h-3.5 text-blue-500" />
-            Povratna karta
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSuggestionClick('enosmerna')}
-            className={`px-3 py-1.5 rounded-full text-[11px] font-bold border whitespace-nowrap transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
-              isEnosmernaActive 
-                ? 'bg-blue-650 text-white border-blue-650' 
-                : 'bg-white/85 text-slate-650 border-slate-200/80 hover:border-blue-400 hover:text-blue-705'
-            }`}
-          >
-            <Plane className="w-3.5 h-3.5 text-blue-500" />
-            Enosmerna karta
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSuggestionClick('economy')}
-            className={`px-3 py-1.5 rounded-full text-[11px] font-bold border whitespace-nowrap transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
-              isEconomyActive 
-                ? 'bg-blue-650 text-white border-blue-650' 
-                : 'bg-white/85 text-slate-650 border-slate-200/80 hover:border-blue-400 hover:text-blue-705'
-            }`}
-          >
-            <Flame className="w-3.5 h-3.5 text-blue-500" />
-            Economy razred
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSuggestionClick('business')}
-            className={`px-3 py-1.5 rounded-full text-[11px] font-bold border whitespace-nowrap transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
-              isBusinessActive 
-                ? 'bg-blue-650 text-white border-blue-650' 
-                : 'bg-white/85 text-slate-650 border-slate-200/80 hover:border-blue-400 hover:text-blue-705'
-            }`}
-          >
-            <Gem className="w-3.5 h-3.5 text-blue-500" />
-            Business razred
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSuggestionClick('plusminus2')}
-            className={`px-3 py-1.5 rounded-full text-[11px] font-bold border whitespace-nowrap transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
-              isPlusMinus2Active 
-                ? 'bg-blue-650 text-white border-blue-650' 
-                : 'bg-white/85 text-slate-650 border-slate-200/80 hover:border-blue-400 hover:text-blue-705'
-            }`}
-          >
-            <CalendarDays className="w-3.5 h-3.5 text-blue-500" />
-            ± 2 dni
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSuggestionClick('carryon')}
-            className={`px-3 py-1.5 rounded-full text-[11px] font-bold border whitespace-nowrap transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
-              isCarryOnActive 
-                ? 'bg-blue-650 text-white border-blue-650' 
-                : 'bg-white/85 text-slate-650 border-slate-200/80 hover:border-blue-400 hover:text-blue-705'
-            }`}
-          >
-            <Luggage className="w-3.5 h-3.5 text-blue-500" />
-            Samo ročna prtljaga
-          </button>
-        </div>
 
         {/* Text Area Form Input */}
-        <div className="pt-2 border-t border-slate-200/40">
+        <div className="pt-2">
           <form onSubmit={handleSend} className="bg-white/90 border border-slate-200 rounded-2xl p-1.5 flex items-center shadow-inner transition-all focus-within:ring-2 focus-within:ring-blue-100">
             <input
               id="chat-message-input"

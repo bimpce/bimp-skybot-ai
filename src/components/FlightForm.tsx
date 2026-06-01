@@ -9,7 +9,9 @@ import {
   Sparkles,
   ToggleLeft,
   ToggleRight,
-  ChevronDown
+  ChevronDown,
+  MessageSquare,
+  Send
 } from 'lucide-react';
 import { FlightSearchFormState, CabinClassType, TripTypeType } from '../types';
 
@@ -17,9 +19,10 @@ interface FlightFormProps {
   formState: FlightSearchFormState;
   onChange: (updater: (prev: FlightSearchFormState) => FlightSearchFormState) => void;
   showValidationErrors: boolean;
+  onGeneratePrompt: (autoSend: boolean) => void;
 }
 
-export default function FlightForm({ formState, onChange, showValidationErrors }: FlightFormProps) {
+export default function FlightForm({ formState, onChange, showValidationErrors, onGeneratePrompt }: FlightFormProps) {
   const { route, dates, passengers, flexibility } = formState;
 
   // Swap origin and destination
@@ -395,6 +398,43 @@ export default function FlightForm({ formState, onChange, showValidationErrors }
           </div>
         </div>
       </div>
+
+      {/* PROMPT GENERATION ACTIONS */}
+      <div className="pt-5 border-t border-slate-200/50 space-y-3">
+        <div className="flex items-center gap-1.5 px-1">
+          <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
+          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Integriran Klepetalni Prompt</span>
+        </div>
+        
+        <p className="text-[11px] text-slate-500 leading-relaxed px-1">
+          Spodnji gumbi avtomatično prevedejo zgornje parametre leta v strukturirano vprašanje za SkyBot AI asistent v n8n.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          <button
+            type="button"
+            id="prepare-prompt-btn"
+            onClick={() => onGeneratePrompt(false)}
+            className="flex items-center justify-center gap-2 py-3 px-4 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 hover:text-slate-900 rounded-xl font-bold text-xs tracking-tight shadow-sm border border-slate-200 hover:border-slate-300 transition-all cursor-pointer select-none"
+            title="Sestavi sporočilo in ga vpiši v polje spodaj za klepet."
+          >
+            <MessageSquare className="w-4 h-4 text-slate-500" />
+            <span>1. Pripravi vprašanje</span>
+          </button>
+
+          <button
+            type="button"
+            id="send-prompt-btn"
+            onClick={() => onGeneratePrompt(true)}
+            className="flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-650 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-bold text-xs tracking-tight shadow-md hover:shadow-lg shadow-blue-500/10 active:scale-[0.98] transition-all cursor-pointer select-none"
+            title="Sestavi sporočilo in ga takoj pošlji n8n asistentu."
+          >
+            <Send className="w-3.5 h-3.5 text-blue-100" />
+            <span>2. Hitro pošlji v klepet</span>
+          </button>
+        </div>
+      </div>
+
     </div>
   );
 }
