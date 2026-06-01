@@ -1,5 +1,5 @@
 {
-  "name": "Flight Search AI Chatbot",
+  "name": "SkyBot AI",
   "description": "Interactive flight search assistant connected to n8n AI webhook for finding the best flight routes and prices.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

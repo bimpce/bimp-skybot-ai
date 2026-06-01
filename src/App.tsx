@@ -327,7 +327,7 @@ export default function App() {
             </button>
 
             <a
-              href="https://bimp-primary.up.railway.app/webhook/website-chatbot"
+              href="https://bimp-primary.up.railway.app/webhook/65ecb3e7-7dca-4610-8233-4cb768e4b091/chat"
               target="_blank"
               referrerPolicy="no-referrer"
               className="hidden md:flex items-center gap-1 px-3 py-1 bg-white/70 border border-slate-250/20 text-slate-600 hover:bg-white hover:text-slate-800 rounded-full text-xs font-medium shadow-sm"
