@@ -17,7 +17,7 @@ import FlightForm from './components/FlightForm';
 import ChatInterface from './components/ChatInterface';
 import { FlightSearchFormState, Message, MessagePayload } from './types';
 
-const WEBHOOK_URL = 'https://bimp-primary.up.railway.app/webhook/bf1b5dd6-d2f9-4ca4-a462-5e31759e9655/chat';
+const WEBHOOK_URL = 'https://bimp-primary.up.railway.app/webhook/website-chatbot';
 
 const DEFAULT_FORM_STATE: FlightSearchFormState = {
   route: {
@@ -290,7 +290,7 @@ export default function App() {
             </button>
 
             <a
-              href="https://bimp-primary.up.railway.app/webhook/bf1b5dd6-d2f9-4ca4-a462-5e31759e9655/chat"
+              href="https://bimp-primary.up.railway.app/webhook/website-chatbot"
               target="_blank"
               referrerPolicy="no-referrer"
               className="hidden md:flex items-center gap-1 px-3 py-1 bg-white/70 border border-slate-250/20 text-slate-600 hover:bg-white hover:text-slate-800 rounded-full text-xs font-medium shadow-sm"
