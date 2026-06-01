@@ -18,7 +18,7 @@ async function startServer() {
   app.post("/api/chat-proxy", async (req, res) => {
     try {
       console.log("Proxying request to n8n webhook...");
-      const response = await fetch("https://bimp-primary.up.railway.app/webhook-test/74b46b23-9f06-4713-bd57-3eaac65a3516", {
+      const response = await fetch("https://bimp-primary.up.railway.app/webhook/website-webhook-skybot", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

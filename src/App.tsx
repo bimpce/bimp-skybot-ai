@@ -225,7 +225,7 @@ export default function App() {
           setMessages((prev) => [...prev, errBotMsg]);
           return;
         } else {
-          throw new Error(`HTTP Error Status: ${response.status}. Body: ${responseText}`);
+          throw new Error(n8nErrorMessage || responseText || `HTTP Error Status: ${response.status}`);
         }
       }
 
@@ -272,14 +272,37 @@ export default function App() {
 
       setMessages((prev) => [...prev, botMsg]);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error during flight webhook fetch:', error);
       
-      // Error message is added to chat directly as requested
+      const errMsg = error.message || '';
+      const isTestWebhook404 = errMsg.includes("is not registered") || errMsg.includes("webhook-test") || errMsg.includes("404");
+      const isWorkflowFailed500 = errMsg.includes("Workflow execution failed") || errMsg.includes("500");
+
+      let userFriendlyMessage = 'Prišlo je do napake pri komunikaciji s strežnikom.';
+      
+      if (isTestWebhook404) {
+        userFriendlyMessage = `⚠️ n8n Testni Webhook ni aktiven oz. ni registriran!\n\n` +
+          `V n8n nastavitvah imate vpisano testno povezavo (\`webhook-test\` oz. 404 napaka). Testni URL v n8n deluje **le takrat**, ko imate v n8n odprt urejevalnik in kliknete gumb **"Execute workflow"** tik pred pošiljanjem sporočila.\n\n` +
+          `**Kako vzpostaviti trajno povezavo, ki deluje vedno:**\n` +
+          `1. V n8n spremenite URL iz **Test** v **Production** (tako da iz URL-ja odstranite besedo \`-test\`, torej URL bo oblike \`/webhook/...\`).\n` +
+          `2. V zgornjem desnem kotu n8n delovnega toka vklopite stikalo **Active** (Aktivno), da aktivirate svoj workflow za stalno.\n\n` +
+          `**Prejeta napaka:**\n"${errMsg}"`;
+      } else if (isWorkflowFailed500) {
+        userFriendlyMessage = `⚠️ n8n Workflow se je sprožil, vendar se je izvedba sesula!\n\n` +
+          `N8n strežnik je vrnil napako **"Workflow execution failed"** (Status 500). To pomeni, da je povezava narejena in se n8n odzove, vendar se v samem n8n delovnem toku (workflowu) pojavi napaka pri enem izmed vaših vozlišč (npr. napačne nastavitve v AI ali API vozlišču).\n\n` +
+          `**Kako odpraviti težavo v n8n:**\n` +
+          `1. Odprite vaš n8n urejevalnik.\n` +
+          `2. V levem meniju kliknite na **Executions** (Zgodovina izvedb).\n` +
+          `3. Poiščite zadnjo neuspešno izvedbo z rdečo oznako in kliknite nanjo, da vidite, katero vozlišče (Node) javi napako in zakaj.`;
+      } else if (errMsg) {
+        userFriendlyMessage = `Prišlo je do napake pri komunikaciji s strežnikom:\n"${errMsg}"`;
+      }
+
       const errBotMsg: Message = {
         id: `bot_err_${Date.now()}`,
         sender: 'bot',
-        text: 'Prišlo je do napake pri komunikaciji s strežnikom.',
+        text: userFriendlyMessage,
         timestamp: new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' }),
         isError: true,
       };
@@ -327,7 +350,7 @@ export default function App() {
             </button>
 
             <a
-              href="https://bimp-primary.up.railway.app/webhook-test/74b46b23-9f06-4713-bd57-3eaac65a3516"
+              href="https://bimp-primary.up.railway.app/webhook/website-webhook-skybot"
               target="_blank"
               referrerPolicy="no-referrer"
               className="hidden md:flex items-center gap-1 px-3 py-1 bg-white/70 border border-slate-250/20 text-slate-600 hover:bg-white hover:text-slate-800 rounded-full text-xs font-medium shadow-sm"
