@@ -187,11 +187,48 @@ export default function App() {
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        throw new Error(`CORS or connection failure. HTTP Status: ${response.status}`);
+      let responseText = '';
+      let isErrorStatus = false;
+
+      try {
+        responseText = await response.text();
+        isErrorStatus = !response.ok;
+      } catch (e) {
+        throw new Error(`Connection failure. HTTP Status: ${response.status}`);
       }
 
-      const responseText = await response.text();
+      if (isErrorStatus) {
+        let n8nErrorMessage = '';
+        try {
+          const errObj = JSON.parse(responseText);
+          n8nErrorMessage = errObj.message || errObj.error || '';
+        } catch (_) {}
+
+        if (responseText.includes("Unused Respond to Webhook node") || n8nErrorMessage.includes("Unused Respond to Webhook")) {
+          const n8nInstructions = 
+            `⚠️ Konfiguracijska težava v n8n:\n"${n8nErrorMessage || 'Unused Respond to Webhook node found in the workflow'}"\n\n` +
+            `**Kako rešiti to napako v vašem n8n:**\n` +
+            `1. Odprite vaš n8n delovni tok (workflow).\n` +
+            `2. Dvakrat kliknite na začetno vozlišče **Webhook** (trigger).\n` +
+            `3. V nastavitvah tega vozlišča poiščite parameter **Response Mode** (oz. "Respond").\n` +
+            `4. Spremenite izbiro iz "On Received" na **"Using 'Respond to Webhook' Node"**.\n` +
+            `5. Ponovno shranite in aktivirajte workflow ter poskusite poslati sporočilo tukaj.\n\n` +
+            `Ta nastavitev bo n8n naročila, naj počaka na izvedbo vozlišča "Respond to Webhook" in vrne njegov odgovor.`;
+
+          const errBotMsg: Message = {
+            id: `bot_err_${Date.now()}`,
+            sender: 'bot',
+            text: n8nInstructions,
+            timestamp: new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' }),
+            isError: true,
+          };
+          setMessages((prev) => [...prev, errBotMsg]);
+          return;
+        } else {
+          throw new Error(`HTTP Error Status: ${response.status}. Body: ${responseText}`);
+        }
+      }
+
       let replyText = '';
 
       // Try parsing as JSON if it looks like JSON or content-type is JSON
