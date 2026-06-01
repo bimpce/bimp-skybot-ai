@@ -199,10 +199,26 @@ export default function App() {
 
       if (isErrorStatus) {
         let n8nErrorMessage = '';
+        let helpSlovene = '';
         try {
           const errObj = JSON.parse(responseText);
           n8nErrorMessage = errObj.message || errObj.error || '';
+          if (errObj.diagnostics && errObj.diagnostics.helpSlovene) {
+            helpSlovene = errObj.diagnostics.helpSlovene;
+          }
         } catch (_) {}
+
+        if (helpSlovene) {
+          const errBotMsg: Message = {
+            id: `bot_err_${Date.now()}`,
+            sender: 'bot',
+            text: helpSlovene,
+            timestamp: new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' }),
+            isError: true,
+          };
+          setMessages((prev) => [...prev, errBotMsg]);
+          return;
+        }
 
         if (responseText.includes("Unused Respond to Webhook node") || n8nErrorMessage.includes("Unused Respond to Webhook")) {
           const n8nInstructions = 

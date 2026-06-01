@@ -16,9 +16,11 @@ async function startServer() {
 
   // Proxy endpoint to bypass browser CORS constraints
   app.post("/api/chat-proxy", async (req, res) => {
+    const webhookUrl = "https://bimp-primary.up.railway.app/webhook/website-webhook-skybot";
     try {
-      console.log("Proxying request to n8n webhook...");
-      const response = await fetch("https://bimp-primary.up.railway.app/webhook/website-webhook-skybot", {
+      console.log("Proxying request to n8n webhook:", webhookUrl);
+      
+      let response = await fetch(webhookUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -27,18 +29,114 @@ async function startServer() {
         body: JSON.stringify(req.body),
       });
 
-      // Get status and headers
-      const status = response.status;
-      const contentType = response.headers.get("content-type") || "";
+      let status = response.status;
+      let contentType = response.headers.get("content-type") || "";
+      let responseText = await response.text();
 
-      console.log(`n8n webhook responded with status: ${status}, content-type: ${contentType}`);
+      console.log(`n8n POST query returned status: ${status}`);
 
-      if (contentType.includes("application/json")) {
-        const data = await response.json();
-        return res.status(status).json(data);
+      // Check if n8n complains that POST is not registered (common when Webhook node in n8n is left at default GET method)
+      const isPostNotRegistered = (status === 404 && responseText.includes("not registered for POST requests")) || 
+                                  (status === 404 && responseText.includes("Did you mean to make a GET request"));
+
+      if (isPostNotRegistered) {
+        console.warn("⚠️ n8n expects a GET request. Attempting automated GET fallback with query params...");
+        
+        // Construct query parameters
+        const queryParams = new URLSearchParams();
+        if (req.body && typeof req.body === 'object') {
+          Object.entries(req.body).forEach(([key, val]) => {
+            if (val !== null && val !== undefined) {
+              if (typeof val === 'object') {
+                queryParams.append(key, JSON.stringify(val));
+                // Flatten second-level parameters to give n8n workflow expressions more versatility
+                Object.entries(val).forEach(([subKey, subVal]) => {
+                  if (subVal !== null && subVal !== undefined && typeof subVal !== 'object') {
+                    queryParams.append(subKey, String(subVal));
+                  }
+                });
+              } else {
+                queryParams.append(key, String(val));
+              }
+            }
+          });
+          // Also append the entire raw payload string as standard fallback parameters
+          queryParams.append("payload", JSON.stringify(req.body));
+          queryParams.append("body", JSON.stringify(req.body));
+        }
+
+        const getUrl = `${webhookUrl}?${queryParams.toString()}`;
+        console.log(`GET Fallback Redirect URL: ${getUrl}`);
+
+        const getResponse = await fetch(getUrl, {
+          method: "GET",
+          headers: {
+            "Accept": "*/*"
+          }
+        });
+
+        status = getResponse.status;
+        contentType = getResponse.headers.get("content-type") || "";
+        responseText = await getResponse.text();
+
+        console.log(`n8n GET fallback responded with status: ${status}`);
+        
+        // If GET was successful or has a clear JSON payload, let's use it
+        if (status >= 200 && status < 300) {
+          if (contentType.includes("application/json")) {
+            return res.status(status).json(JSON.parse(responseText));
+          } else {
+            return res.status(status).send(responseText);
+          }
+        } else if (status === 500) {
+          // If GET returned 500 (Workflow execution failed), return detailed diagnosis
+          console.error("GET fallback returned 500 - Workflow execution failed internally.");
+          return res.status(status).json({
+            error: "N8N_WORKFLOW_FAILED",
+            message: "Workflow execution failed inside n8n",
+            diagnostics: {
+              httpMethodInN8n: "GET",
+              status: 500,
+              helpSlovene: `⚠️ Vaš n8n Webhook je nastavljen na metodo **GET** namesto **POST**!\n\n` +
+                `Ker je nastavljen na GET, se n8n delovni tok uspešno sproži, vendar se **sesuje s statusom 500 (Workflow execution failed)**. ` +
+                `Do te napake pride, ker vaša n8n vozlišča (npr. AI Agent ali HTTP Request) v nadaljevanju toka verjetno poskušajo prebrati podatke iz telesa sporočila (\`body.message\`), ki pa je pri GET metodi prazno!\n\n` +
+                `**KAKO POPRAVITI TO NAPAKO V N8N:**\n` +
+                `1. Odprite vaš n8n urejevalnik delovnega toka.\n` +
+                `2. Dvakrat kliknite na začetno vozlišče **Webhook** (trigger).\n` +
+                `3. Spremenite možnost **HTTP Method** iz **GET** v **POST**.\n` +
+                `4. Shranite spremembe in zgoraj desno vklopite stikalo **Active** (Aktivno), da bo delovalo neprekinjeno.`
+            }
+          });
+        }
+      }
+
+      // If we fall through and get a 404 from POST with no GET fallback success, or other errors
+      if (status >= 200 && status < 300) {
+        if (contentType.includes("application/json")) {
+          return res.status(status).json(JSON.parse(responseText));
+        } else {
+          return res.status(status).send(responseText);
+        }
       } else {
-        const text = await response.text();
-        return res.status(status).send(text);
+        // Parse error message
+        let parsedErr: any = null;
+        try { parsedErr = JSON.parse(responseText); } catch (_) {}
+
+        return res.status(status).json({
+          error: "N8N_ERROR",
+          status: status,
+          message: parsedErr?.message || responseText || "Neznana napaka pri povezavi z n8n.",
+          diagnostics: {
+            isPostNotRegistered: isPostNotRegistered,
+            helpSlovene: isPostNotRegistered ? 
+              `⚠️ Vaš n8n Webhook je nastavljen na metodo **GET** namesto **POST**!\n\n` +
+              `**KAKO POPRAVITI TA PROBLEM:**\n` +
+              `1. Odprite vaš n8n urejevalnik delovnega toka.\n` +
+              `2. Dvakrat kliknite na začetno vozlišče **Webhook** (trigger).\n` +
+              `3. Spremenite možnost **HTTP Method** iz **GET** v **POST**.\n` +
+              `4. Shranite spremembe in zgoraj desno ponovno vklopite stikalo **Active** (Aktivno).` : null
+          }
+        });
       }
     } catch (error: any) {
       console.error("Error inside chat-proxy:", error);
