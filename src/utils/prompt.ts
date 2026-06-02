@@ -45,11 +45,16 @@ export function generatePromptFromState(state: FlightSearchFormState): string {
     ? 'Potujem samo z ročno prtljago.' 
     : 'Vključena je lahko tudi oddana prtljaga.';
 
+  const emailText = state.email && state.email.trim()
+    ? `\n📧 Prosim, pošlji končne letalske ponudbe tudi na e-poštni naslov: ${state.email.trim()}\n`
+    : '';
+
   return `Pozdravljen! Iščem letalske povezave s spodnjimi podatki:\n\n` +
          `🛫 Odhod: ${origin}\n` +
          `🛬 Destinacija: ${destination}\n` +
          `📅 Datumi: ${dateText} ${flexText}\n` +
          `👥 Potniki: ${passengers.numberOfPassengers} x v ${cabinName} razredu\n` +
-         `💼 Prtljaga & Prestopi: ${baggageText} ${stopoverText}\n\n` +
-         `Prosim, preveri najboljše razpoložljive lete v sistemu in mi predlagaj ugodne povezave!`;
+         `💼 Prtljaga & Prestopi: ${baggageText} ${stopoverText}\n` +
+         emailText +
+         `\nProsim, preveri najboljše razpoložljive lete v sistemu in mi predlagaj ugodne povezave!`;
 }

@@ -38,7 +38,8 @@ const DEFAULT_FORM_STATE: FlightSearchFormState = {
     flexibleDays: 0,
     willingToAddStopovers: false,
     carryOnOnly: false,
-  }
+  },
+  email: ''
 };
 
 export default function App() {
@@ -112,6 +113,17 @@ export default function App() {
 
     const textPayload = generatePromptFromState(formState);
 
+    const isEmailEntered = typeof formState.email === 'string' && formState.email.trim() !== '';
+    const dateRangeStr = formState.dates.tripType === 'round-trip' && formState.dates.returnDate
+      ? `${formState.dates.outboundDate} do ${formState.dates.returnDate}`
+      : formState.dates.outboundDate;
+
+    const baggageStr = formState.flexibility.carryOnOnly ? 'Samo ročna' : 'Tudi oddana';
+
+    const subjectStr = isEmailEntered
+      ? `Relacija: ${formState.route.originCity} - ${formState.route.destinationCity}, Datum: ${dateRangeStr}, Potniki: ${formState.passengers.numberOfPassengers}, Prtljaga: ${baggageStr}`
+      : undefined;
+
     // Formulate JSON Payload
     const payload: MessagePayload = {
       sessionId: sessionId,
@@ -135,7 +147,9 @@ export default function App() {
         flexibleDays: formState.flexibility.flexibleDays,
         willingToAddStopovers: formState.flexibility.willingToAddStopovers,
         carryOnOnly: formState.flexibility.carryOnOnly,
-      }
+      },
+      email: formState.email || '',
+      ...(subjectStr ? { emailSubject: subjectStr, subject: subjectStr } : {})
     };
 
     try {

@@ -10,7 +10,8 @@ import {
   ToggleLeft,
   ToggleRight,
   ChevronDown,
-  RefreshCw
+  RefreshCw,
+  Mail
 } from 'lucide-react';
 import { FlightSearchFormState, CabinClassType, TripTypeType } from '../types';
 
@@ -404,6 +405,31 @@ export default function FlightForm({ formState, onChange, showValidationErrors, 
             </button>
           </div>
         </div>
+
+        {/* EMAIL ADDRESS */}
+        <div className="pt-4 border-t border-slate-200/50 space-y-2">
+          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest block ml-1 flex items-center gap-1.5">
+            <Mail className="w-3.5 h-3.5 text-blue-500" />
+            <span>E-poštni naslov (neobvezno)</span>
+          </label>
+          <div className="relative">
+            <input
+              type="email"
+              id="email-input"
+              value={formState.email || ''}
+              onChange={(e) => onChange((prev) => ({ ...prev, email: e.target.value }))}
+              placeholder="Vpiši email"
+              className="w-full pl-10 pr-4 py-3 bg-white/80 border border-slate-200/80 rounded-xl font-semibold text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:bg-white transition-all shadow-sm font-medium"
+            />
+            <div className="absolute left-3.5 inset-y-0 flex items-center pointer-events-none text-slate-400">
+              <Mail className="w-4 h-4" />
+            </div>
+          </div>
+          <p className="text-[10px] text-slate-400 font-semibold leading-relaxed ml-1">
+            Če vpišete e-pošto, se bodo rezultati iskanja samodejno poslali na ta naslov.
+          </p>
+        </div>
+
       </div>
 
       {/* SEARCH FLIGHT ACTION */}

@@ -28,6 +28,7 @@ export interface FlightSearchFormState {
   dates: DatesState;
   passengers: PassengersState;
   flexibility: FlexibilityState;
+  email?: string;
 }
 
 export interface MessagePayload {
@@ -39,6 +40,9 @@ export interface MessagePayload {
   dates: DatesState;
   passengers: PassengersState;
   flexibility: FlexibilityState;
+  email?: string;
+  emailSubject?: string;
+  subject?: string;
 }
 
 export interface Message {
