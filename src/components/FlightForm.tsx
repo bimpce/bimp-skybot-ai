@@ -10,8 +10,7 @@ import {
   ToggleLeft,
   ToggleRight,
   ChevronDown,
-  MessageSquare,
-  Send
+  RefreshCw
 } from 'lucide-react';
 import { FlightSearchFormState, CabinClassType, TripTypeType } from '../types';
 
@@ -19,10 +18,11 @@ interface FlightFormProps {
   formState: FlightSearchFormState;
   onChange: (updater: (prev: FlightSearchFormState) => FlightSearchFormState) => void;
   showValidationErrors: boolean;
-  onGeneratePrompt: (autoSend: boolean) => void;
+  isLoading: boolean;
+  onSearch: () => void;
 }
 
-export default function FlightForm({ formState, onChange, showValidationErrors, onGeneratePrompt }: FlightFormProps) {
+export default function FlightForm({ formState, onChange, showValidationErrors, isLoading, onSearch }: FlightFormProps) {
   const { route, dates, passengers, flexibility } = formState;
 
   // Swap origin and destination
@@ -95,6 +95,10 @@ export default function FlightForm({ formState, onChange, showValidationErrors, 
   const isDestinationMissing = !route.destinationCity.trim();
   const isOutboundMissing = !dates.outboundDate;
   const isReturnMissing = dates.tripType === 'round-trip' && !dates.returnDate;
+  const isReturnEarlierThanOutbound = dates.tripType === 'round-trip' && 
+    !!dates.outboundDate && 
+    !!dates.returnDate && 
+    dates.returnDate < dates.outboundDate;
   const isPassengerCountInvalid = passengers.numberOfPassengers < 1;
 
   return (
@@ -247,21 +251,24 @@ export default function FlightForm({ formState, onChange, showValidationErrors, 
               type="date"
               disabled={dates.tripType === 'one-way'}
               value={dates.returnDate || ''}
+              min={dates.outboundDate || undefined}
               onChange={(e) => updateDates('returnDate', e.target.value)}
               className={`w-full pl-10 pr-3 pt-6 pb-2.5 text-sm bg-white/80 border rounded-xl font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:bg-white transition-all shadow-sm ${
                 dates.tripType === 'one-way'
                   ? 'bg-slate-200/40 border-dashed border-slate-300 cursor-not-allowed text-slate-400 shadow-inner'
-                  : showValidationErrors && isReturnMissing
-                  ? 'border-red-300 focus:ring-red-200 focus:border-red-400 bg-red-50/20'
+                  : isReturnEarlierThanOutbound || (showValidationErrors && isReturnMissing)
+                  ? 'border-red-300 focus:ring-red-200 focus:border-red-400 bg-red-50/20 text-red-900'
                   : 'border-slate-200/80 focus:ring-blue-100 focus:border-blue-400'
               }`}
             />
           </div>
         </div>
-        {showValidationErrors && (isOutboundMissing || isReturnMissing) && (
+        {(isReturnEarlierThanOutbound || (showValidationErrors && (isOutboundMissing || isReturnMissing))) && (
           <p className="text-xs text-red-550 flex items-center gap-1 font-semibold ml-1">
             <AlertCircle className="w-3.5 h-3.5" />
-            {isOutboundMissing && isReturnMissing
+            {isReturnEarlierThanOutbound
+              ? 'Datum povratka ne more biti starejši od datuma odhoda.'
+              : isOutboundMissing && isReturnMissing
               ? 'Potrebno je vnesti datuma odhoda in povratka.'
               : isOutboundMissing
               ? 'Potrebno je vnesti datum odhoda.'
@@ -399,40 +406,32 @@ export default function FlightForm({ formState, onChange, showValidationErrors, 
         </div>
       </div>
 
-      {/* PROMPT GENERATION ACTIONS */}
-      <div className="pt-5 border-t border-slate-200/50 space-y-3">
-        <div className="flex items-center gap-1.5 px-1">
-          <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
-          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Integriran Klepetalni Prompt</span>
-        </div>
-        
-        <p className="text-[11px] text-slate-500 leading-relaxed px-1">
-          Spodnji gumbi avtomatično prevedejo zgornje parametre leta v strukturirano vprašanje za SkyBot AI asistent.
-        </p>
-
-        <div className="grid grid-cols-1 gap-2.5 pt-1">
-          <button
-            type="button"
-            id="prepare-prompt-btn"
-            onClick={() => onGeneratePrompt(false)}
-            className="flex items-center justify-center gap-2 py-3 px-4 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 hover:text-slate-900 rounded-xl font-bold text-xs tracking-tight shadow-sm border border-slate-200 hover:border-slate-300 transition-all cursor-pointer select-none w-full"
-            title="Sestavi sporočilo in ga vpiši v polje spodaj za klepet."
-          >
-            <MessageSquare className="w-4 h-4 text-slate-500 shrink-0" />
-            <span>1. Pripravi vprašanje v klepetu</span>
-          </button>
-
-          <button
-            type="button"
-            id="send-prompt-btn"
-            onClick={() => onGeneratePrompt(true)}
-            className="flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs tracking-tight shadow-md hover:shadow-lg shadow-blue-500/10 active:scale-[0.98] transition-all cursor-pointer select-none w-full"
-            title="Sestavi sporočilo in ga takoj pošlji asistentu."
-          >
-            <Send className="w-3.5 h-3.5 text-blue-100 shrink-0" />
-            <span>2. Hitro pošlji neposredno v klepet</span>
-          </button>
-        </div>
+      {/* SEARCH FLIGHT ACTION */}
+      <div className="pt-5 border-t border-slate-200/50">
+        <button
+          type="button"
+          id="search-flights-btn"
+          onClick={onSearch}
+          disabled={isLoading}
+          className={`flex items-center justify-center gap-2.5 py-4 px-4 rounded-xl font-bold text-sm tracking-tight shadow-md hover:shadow-lg transition-all cursor-pointer select-none w-full ${
+            isLoading
+              ? 'bg-blue-400 text-white cursor-not-allowed opacity-85'
+              : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-850 text-white active:scale-[0.98] shadow-blue-500/10'
+          }`}
+          title="Sproži iskanje najboljših letalskih povezav."
+        >
+          {isLoading ? (
+            <>
+              <RefreshCw className="w-4.5 h-4.5 text-white animate-spin" />
+              <span>Iščem povezave...</span>
+            </>
+          ) : (
+            <>
+              <PlaneTakeoff className="w-4.5 h-4.5 text-blue-100 shrink-0 transform -rotate-12" />
+              <span>Poišči lete</span>
+            </>
+          )}
+        </button>
       </div>
 
     </div>

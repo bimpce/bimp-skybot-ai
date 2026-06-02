@@ -14,8 +14,8 @@ import {
   BookOpen
 } from 'lucide-react';
 import FlightForm from './components/FlightForm';
-import ChatInterface from './components/ChatInterface';
-import { FlightSearchFormState, Message, MessagePayload } from './types';
+import SearchResults from './components/SearchResults';
+import { FlightSearchFormState, MessagePayload } from './types';
 import { generatePromptFromState } from './utils/prompt';
 
 const WEBHOOK_URL = '/api/chat-proxy';
@@ -48,65 +48,20 @@ export default function App() {
     return saved ? JSON.parse(saved) : DEFAULT_FORM_STATE;
   });
   
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [searchState, setSearchState] = useState<'initial' | 'loading' | 'success' | 'error'>('initial');
+  const [resultsText, setResultsText] = useState<string>('');
+  const [errorText, setErrorText] = useState<string>('');
   const [showValidationErrors, setShowValidationErrors] = useState<boolean>(false);
   const [showGuide, setShowGuide] = useState<boolean>(false);
-  const [inputText, setInputText] = useState<string>('');
 
-  const handleGeneratePrompt = (autoSend: boolean) => {
-    const promptText = generatePromptFromState(formState);
-    setInputText(promptText);
-    
-    if (autoSend) {
-      handleSendMessage(promptText);
-    } else {
-      // Focus on the chat message input field so the user can easily see it was prepared
-      setTimeout(() => {
-        const inputElement = document.getElementById('chat-message-input');
-        if (inputElement) {
-          inputElement.focus();
-          inputElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 100);
-    }
-  };
-
-  // Initialize Session ID & Load Saved Chat History
+  // Initialize Session ID
   useEffect(() => {
-    // Session ID
     let currentSessionId = localStorage.getItem('flight_chat_sessionId');
     if (!currentSessionId) {
       currentSessionId = `sess_${Math.random().toString(36).substring(2, 11)}_${Date.now()}`;
       localStorage.setItem('flight_chat_sessionId', currentSessionId);
     }
     setSessionId(currentSessionId);
-
-    // Initial message default
-    const initialMsgTime = new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' });
-    const fallbackInitialMsg: Message = {
-      id: 'welcome-message',
-      sender: 'bot',
-      text: 'Pozdravljeni! Pomagam vam najti najboljše letalske karte. Vnesite relacijo, datume in število potnikov.',
-      timestamp: initialMsgTime,
-    };
-
-    // Load messages
-    const savedMessages = localStorage.getItem('flight_chat_history');
-    if (savedMessages) {
-      try {
-        const parsed = JSON.parse(savedMessages);
-        if (parsed && parsed.length > 0) {
-          setMessages(parsed);
-        } else {
-          setMessages([fallbackInitialMsg]);
-        }
-      } catch (err) {
-        setMessages([fallbackInitialMsg]);
-      }
-    } else {
-      setMessages([fallbackInitialMsg]);
-    }
   }, []);
 
   // Sync Form State with localStorage
@@ -114,30 +69,7 @@ export default function App() {
     localStorage.setItem('flight_form_state', JSON.stringify(formState));
   }, [formState]);
 
-  // Sync Messages with localStorage
-  useEffect(() => {
-    if (messages.length > 0) {
-      localStorage.setItem('flight_chat_history', JSON.stringify(messages));
-    }
-  }, [messages]);
-
-  // Clear Chat history action
-  const handleClearHistory = () => {
-    const initialMsgTime = new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' });
-    const welcome: Message = {
-      id: 'welcome-message',
-      sender: 'bot',
-      text: 'Pozdravljeni! Pomagam vam najti najboljše letalske karte. Vnesite relacijo, datume in število potnikov.',
-      timestamp: initialMsgTime,
-    };
-    setMessages([welcome]);
-    localStorage.setItem('flight_chat_history', JSON.stringify([welcome]));
-    setFormState(DEFAULT_FORM_STATE);
-    setShowValidationErrors(false);
-    setInputText('');
-  };
-
-  // Check required validation (does not block, but will highlight inputs)
+  // Check required validation
   const checkIsFormComplete = () => {
     const isOriginOk = !!formState.route.originCity.trim();
     const isDestinationOk = !!formState.route.destinationCity.trim();
@@ -145,36 +77,46 @@ export default function App() {
     const isReturnOk = formState.dates.tripType === 'one-way' || !!formState.dates.returnDate;
     const isPassengerOk = formState.passengers.numberOfPassengers >= 1;
 
-    return isOriginOk && isDestinationOk && isOutboundOk && isReturnOk && isPassengerOk;
+    // Check if return date is earlier than outbound date
+    const isReturnEarlierThanOutbound = formState.dates.tripType === 'round-trip' && 
+      !!formState.dates.outboundDate && 
+      !!formState.dates.returnDate && 
+      formState.dates.returnDate < formState.dates.outboundDate;
+
+    return isOriginOk && isDestinationOk && isOutboundOk && isReturnOk && isPassengerOk && !isReturnEarlierThanOutbound;
   };
 
-  // Submit Handler / Send Message Trigger
-  const handleSendMessage = async (text: string) => {
-    if (isLoading) return;
+  // Reset search state
+  const handleReset = () => {
+    setFormState(DEFAULT_FORM_STATE);
+    setSearchState('initial');
+    setResultsText('');
+    setErrorText('');
+    setShowValidationErrors(false);
+  };
 
-    // Check validation and trigger highlights
+  // Submit Handler / AI Flight Search Trigger in Background
+  const handleSearch = async () => {
+    if (searchState === 'loading') return;
+
+    // Check validation and trigger highlights if missing
     const isComplete = checkIsFormComplete();
     if (!isComplete) {
       setShowValidationErrors(true);
+      return;
     }
 
-    // 1. Append user message to state
-    const userTimestamp = new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' });
-    const userMsg: Message = {
-      id: `usr_${Date.now()}`,
-      sender: 'user',
-      text: text,
-      timestamp: userTimestamp,
-    };
+    setShowValidationErrors(false);
+    setSearchState('loading');
+    setErrorText('');
 
-    setMessages((prev) => [...prev, userMsg]);
-    setIsLoading(true);
+    const textPayload = generatePromptFromState(formState);
 
-    // 2. Formulate JSON Payload
+    // Formulate JSON Payload
     const payload: MessagePayload = {
       sessionId: sessionId,
       timestamp: new Date().toISOString(),
-      message: text,
+      message: textPayload,
       language: 'sl',
       route: {
         originCity: formState.route.originCity,
@@ -197,7 +139,6 @@ export default function App() {
     };
 
     try {
-      // 3. Post to n8n Webhook
       const response = await fetch(WEBHOOK_URL, {
         method: 'POST',
         headers: {
@@ -213,7 +154,7 @@ export default function App() {
         responseText = await response.text();
         isErrorStatus = !response.ok;
       } catch (e) {
-        throw new Error(`Connection failure. HTTP Status: ${response.status}`);
+        throw new Error(`Poizvedba ni uspela. Status kode strežnika: ${response.status}`);
       }
 
       if (isErrorStatus) {
@@ -228,45 +169,27 @@ export default function App() {
         } catch (_) {}
 
         if (helpSlovene) {
-          const errBotMsg: Message = {
-            id: `bot_err_${Date.now()}`,
-            sender: 'bot',
-            text: helpSlovene,
-            timestamp: new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' }),
-            isError: true,
-          };
-          setMessages((prev) => [...prev, errBotMsg]);
-          return;
+          throw new Error(helpSlovene);
         }
 
         if (responseText.includes("Unused Respond to Webhook node") || n8nErrorMessage.includes("Unused Respond to Webhook")) {
           const n8nInstructions = 
-            `⚠️ Konfiguracijska težava v delovnem toku:\n"${n8nErrorMessage || 'Unused Respond to Webhook node found in the workflow'}"\n\n` +
+            `⚠️ Konfiguracijska težava v delovnem toku:\n"${n8nErrorMessage || 'Unused Respond to Webhook'}"\n\n` +
             `**Kako rešiti to napako v vaših nastavitvah:**\n` +
             `1. Odprite vaš delovni tok (workflow).\n` +
             `2. Dvakrat kliknite na začetno vozlišče **Webhook** (trigger).\n` +
-            `3. V nastavitvah tega vozlišča poiščite parameter **Response Mode** (oz. "Respond").\n` +
+            `3. V nastavitvah tega vozlišča poiščite parameter **Response Mode**.\n` +
             `4. Spremenite izbiro iz "On Received" na **"Using 'Respond to Webhook' Node"**.\n` +
-            `5. Ponovno shranite in aktivirajte delovni tok ter poskusite poslati sporočilo tukaj.\n\n` +
-            `Ta nastavitev bo urejevalniku naročila, naj počaka na izvedbo vozlišča "Respond to Webhook" in vrne njegov odgovor.`;
-
-          const errBotMsg: Message = {
-            id: `bot_err_${Date.now()}`,
-            sender: 'bot',
-            text: n8nInstructions,
-            timestamp: new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' }),
-            isError: true,
-          };
-          setMessages((prev) => [...prev, errBotMsg]);
-          return;
+            `5. Ponovno shranite in aktivirajte delovni tok.`;
+          throw new Error(n8nInstructions);
         } else {
-          throw new Error(n8nErrorMessage || responseText || `HTTP Error Status: ${response.status}`);
+          throw new Error(n8nErrorMessage || responseText || `HTTP status: ${response.status}`);
         }
       }
 
       let replyText = '';
 
-      // Try parsing as JSON if it looks like JSON or content-type is JSON
+      // Try parsing as JSON
       const isJson = (response.headers.get('content-type') || '').includes('application/json') ||
                      responseText.trim().startsWith('{') ||
                      responseText.trim().startsWith('[');
@@ -283,32 +206,23 @@ export default function App() {
             replyText = responseData;
           }
         } catch (e) {
-          // Fall back to raw text if JSON parsing fails
           replyText = responseText;
         }
       }
 
-      // If replyText is still empty or it was not JSON, fallback to raw response text
       if (!replyText.trim()) {
         replyText = responseText;
       }
 
-      // Fallback if we received absolutely empty response
       if (!replyText.trim()) {
         replyText = 'Prejet je bil prazen odgovor s strani strežnika.';
       }
 
-      const botMsg: Message = {
-        id: `bot_${Date.now()}`,
-        sender: 'bot',
-        text: replyText,
-        timestamp: new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' }),
-      };
-
-      setMessages((prev) => [...prev, botMsg]);
+      setResultsText(replyText);
+      setSearchState('success');
 
     } catch (error: any) {
-      console.error('Error during flight webhook fetch:', error);
+      console.error('Error during flight searches webhook fetch:', error);
       
       const errMsg = error.message || '';
       const isTestWebhook404 = errMsg.includes("is not registered") || errMsg.includes("webhook-test") || errMsg.includes("404");
@@ -331,20 +245,11 @@ export default function App() {
           `2. V levem meniju kliknite na **Executions** (Zgodovina izvedb).\n` +
           `3. Poiščite zadnjo neuspešno izvedbo z rdečo oznako in kliknite nanjo, da vidite, katero vozlišče (Node) javi napako in zakaj.`;
       } else if (errMsg) {
-        userFriendlyMessage = `Prišlo je do napake pri komunikaciji s strežnikom:\n"${errMsg}"`;
+        userFriendlyMessage = errMsg.startsWith('⚠️') ? errMsg : `Prišlo je do napake pri komunikaciji s strežnikom:\n"${errMsg}"`;
       }
 
-      const errBotMsg: Message = {
-        id: `bot_err_${Date.now()}`,
-        sender: 'bot',
-        text: userFriendlyMessage,
-        timestamp: new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' }),
-        isError: true,
-      };
-
-      setMessages((prev) => [...prev, errBotMsg]);
-    } finally {
-      setIsLoading(false);
+      setErrorText(userFriendlyMessage);
+      setSearchState('error');
     }
   };
 
@@ -370,30 +275,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* Guide and External Badges */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowGuide(!showGuide)}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all shadow-sm ${
-                showGuide 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-white/80 border border-slate-200/60 hover:bg-white text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>{showGuide ? 'Zapri navodila' : 'Navodila za integracijo'}</span>
-            </button>
-
-            <a
-              href="https://bimp-primary.up.railway.app/webhook/website-webhook-skybot"
-              target="_blank"
-              referrerPolicy="no-referrer"
-              className="hidden md:flex items-center gap-1 px-3 py-1 bg-white/70 border border-slate-250/20 text-slate-600 hover:bg-white hover:text-slate-800 rounded-full text-xs font-medium shadow-sm"
-            >
-              <span>Webhook link</span>
-              <ExternalLink className="w-3 h-3" />
-            </a>
-          </div>
+          {/* Guide and External Badges removed as per request */}
 
         </div>
       </header>
@@ -469,7 +351,7 @@ export default function App() {
             Poiščite naslednjo destinacijo z letalskim asistentom
           </h1>
           <p className="text-slate-500 text-sm mt-1 max-w-2xl">
-            Izpolnite podatke na levi formi ali preprosto klepetajte z AI asistentom. Oboje deluje sinhronizirano in nudi optimalno uporabniško izkušnjo.
+            Izpolnite parametre potovanja in naš AI asistent vam bo predlagal najboljše letalske povezave.
           </p>
         </div>
 
@@ -482,21 +364,20 @@ export default function App() {
               formState={formState}
               onChange={setFormState}
               showValidationErrors={showValidationErrors}
-              onGeneratePrompt={handleGeneratePrompt}
+              isLoading={searchState === 'loading'}
+              onSearch={handleSearch}
             />
           </section>
 
-          {/* RIGHT: Live Bot Chat Interface */}
+          {/* RIGHT: Search Results Panel */}
           <section className="lg:col-span-7 w-full">
-            <ChatInterface 
-              messages={messages}
-              isLoading={isLoading}
-              onSendMessage={handleSendMessage}
-              onClearHistory={handleClearHistory}
+            <SearchResults 
+              searchState={searchState}
+              resultsText={resultsText}
+              errorText={errorText}
               formState={formState}
-              onFormChange={setFormState}
-              inputText={inputText}
-              setInputText={setInputText}
+              onReset={handleReset}
+              onRetry={handleSearch}
             />
           </section>
 

@@ -1,6 +1,49 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
+import { GoogleGenAI } from "@google/genai";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+// Automatic Gemini search-grounded fallback if the primary n8n webhook fails
+async function generateGeminiFallback(body: any): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is not defined in the environment.");
+  }
+
+  const ai = new GoogleGenAI({
+    apiKey: apiKey,
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
+      }
+    }
+  });
+
+  const queryMessage = body?.message || "Poišči lete in ugodne povezave";
+
+  const systemInstruction = 
+    `You are an elite travel assistant and flight search expert named SkyBot AI. ` +
+    `Generate a highly realistic, up-to-date and detailed flight search report in Slovenian language based on the user's search parameters. ` +
+    `Format your response beautifully using Markdown with clear titles (### headings) and bullet points. ` +
+    `CRITICAL: You must include at least 2 to 4 realistic flight options with a price tag (e.g. "124 €", "340 EUR") and airline name, so that our frontend can dynamically parse them into beautiful flight cards. ` +
+    `Include details like layover cities, durations, baggage, and booking suggestions (e.g., Skyscanner, Ryanair, EasyJet, Lufthansa based on route). ` +
+    `Use friendly Slovenian travel tone. ` +
+    `At the very bottom, include this exact professional badge notice: "*Rezultati so pridobljeni preko rezervnega varnostnega sistema SkyBot AI (primarni delovni tok n8n ni dosegljiv).* "`;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3.5-flash",
+    contents: queryMessage,
+    config: {
+      systemInstruction: systemInstruction,
+      tools: [{ googleSearch: {} }],
+    },
+  });
+
+  return response.text || "Prejet je bil prazen odgovor s strani rezervnega sistema.";
+}
 
 async function startServer() {
   const app = express();
@@ -20,20 +63,53 @@ async function startServer() {
     try {
       console.log("Proxying request to n8n webhook:", webhookUrl);
       
-      let response = await fetch(webhookUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "*/*"
-        },
-        body: JSON.stringify(req.body),
-      });
+      let response;
+      let status;
+      let contentType = "";
+      let responseText = "";
+      let isErrorStatus = false;
 
-      let status = response.status;
-      let contentType = response.headers.get("content-type") || "";
-      let responseText = await response.text();
+      try {
+        response = await fetch(webhookUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "*/*"
+          },
+          body: JSON.stringify(req.body),
+        });
+
+        status = response.status;
+        contentType = response.headers.get("content-type") || "";
+        responseText = await response.text();
+        isErrorStatus = !response.ok;
+      } catch (err: any) {
+        console.warn("⚠️ n8n server fetch completely failed. Triggering automated Gemini Fallback...", err.message);
+        try {
+          const fallbackText = await generateGeminiFallback(req.body);
+          return res.status(200).json({ reply: fallbackText });
+        } catch (gemError: any) {
+          console.error("Gemini fallback failed too:", gemError);
+          return res.status(500).json({ 
+            error: "N8N_AND_FALLBACK_FAILED", 
+            message: `Primary search call failed: ${err.message}. Secondary AI fallback failed: ${gemError.message}` 
+          });
+        }
+      }
 
       console.log(`n8n POST query returned status: ${status}`);
+
+      // Auto fallback if n8n returns 500 execution failed or any bad status
+      if (isErrorStatus || status >= 400) {
+        console.warn(`⚠️ n8n returned error status ${status}. Triggering automated Gemini Fallback...`);
+        try {
+          const fallbackText = await generateGeminiFallback(req.body);
+          return res.status(200).json({ reply: fallbackText });
+        } catch (gemError: any) {
+          console.error("Gemini fallback execution failed on n8n error status:", gemError);
+          // If fallback fails, fall through to the original error rendering
+        }
+      }
 
       // Check if n8n complains that POST is not registered (common when Webhook node in n8n is left at default GET method)
       const isPostNotRegistered = (status === 404 && responseText.includes("not registered for POST requests")) || 
