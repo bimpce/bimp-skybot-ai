@@ -1,7 +1,7 @@
 import { FlightSearchFormState } from '../types';
 
 /**
- * Generates a clean, friendly Slovenian prompt for the n8n chatbot based on search parameters.
+ * Generates a clean, friendly Slovenian prompt for the chatbot based on search parameters.
  */
 export function generatePromptFromState(state: FlightSearchFormState): string {
   const { route, dates, passengers, flexibility } = state;
@@ -51,5 +51,5 @@ export function generatePromptFromState(state: FlightSearchFormState): string {
          `📅 Datumi: ${dateText} ${flexText}\n` +
          `👥 Potniki: ${passengers.numberOfPassengers} x v ${cabinName} razredu\n` +
          `💼 Prtljaga & Prestopi: ${baggageText} ${stopoverText}\n\n` +
-         `Prosim, preveri najboljše razpoložljive lete v n8n sistemu in mi predlagaj ugodne povezave!`;
+         `Prosim, preveri najboljše razpoložljive lete v sistemu in mi predlagaj ugodne povezave!`;
 }

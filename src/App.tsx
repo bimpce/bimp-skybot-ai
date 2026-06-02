@@ -241,14 +241,14 @@ export default function App() {
 
         if (responseText.includes("Unused Respond to Webhook node") || n8nErrorMessage.includes("Unused Respond to Webhook")) {
           const n8nInstructions = 
-            `⚠️ Konfiguracijska težava v n8n:\n"${n8nErrorMessage || 'Unused Respond to Webhook node found in the workflow'}"\n\n` +
-            `**Kako rešiti to napako v vašem n8n:**\n` +
-            `1. Odprite vaš n8n delovni tok (workflow).\n` +
+            `⚠️ Konfiguracijska težava v delovnem toku:\n"${n8nErrorMessage || 'Unused Respond to Webhook node found in the workflow'}"\n\n` +
+            `**Kako rešiti to napako v vaših nastavitvah:**\n` +
+            `1. Odprite vaš delovni tok (workflow).\n` +
             `2. Dvakrat kliknite na začetno vozlišče **Webhook** (trigger).\n` +
             `3. V nastavitvah tega vozlišča poiščite parameter **Response Mode** (oz. "Respond").\n` +
             `4. Spremenite izbiro iz "On Received" na **"Using 'Respond to Webhook' Node"**.\n` +
-            `5. Ponovno shranite in aktivirajte workflow ter poskusite poslati sporočilo tukaj.\n\n` +
-            `Ta nastavitev bo n8n naročila, naj počaka na izvedbo vozlišča "Respond to Webhook" in vrne njegov odgovor.`;
+            `5. Ponovno shranite in aktivirajte delovni tok ter poskusite poslati sporočilo tukaj.\n\n` +
+            `Ta nastavitev bo urejevalniku naročila, naj počaka na izvedbo vozlišča "Respond to Webhook" in vrne njegov odgovor.`;
 
           const errBotMsg: Message = {
             id: `bot_err_${Date.now()}`,
@@ -295,7 +295,7 @@ export default function App() {
 
       // Fallback if we received absolutely empty response
       if (!replyText.trim()) {
-        replyText = 'Prejet je bil prazen odgovor s strani n8n.';
+        replyText = 'Prejet je bil prazen odgovor s strani strežnika.';
       }
 
       const botMsg: Message = {
@@ -317,17 +317,17 @@ export default function App() {
       let userFriendlyMessage = 'Prišlo je do napake pri komunikaciji s strežnikom.';
       
       if (isTestWebhook404) {
-        userFriendlyMessage = `⚠️ n8n Testni Webhook ni aktiven oz. ni registriran!\n\n` +
-          `V n8n nastavitvah imate vpisano testno povezavo (\`webhook-test\` oz. 404 napaka). Testni URL v n8n deluje **le takrat**, ko imate v n8n odprt urejevalnik in kliknete gumb **"Execute workflow"** tik pred pošiljanjem sporočila.\n\n` +
+        userFriendlyMessage = `⚠️ Testni Webhook ni aktiven oz. ni registriran!\n\n` +
+          `V nastavitvah imate vpisano testno povezavo (\`webhook-test\` oz. 404 napaka). Testni URL deluje **le takrat**, ko imate odprt urejevalnik delovnega toka in kliknete gumb **"Execute workflow"** tik pred pošiljanjem sporočila.\n\n` +
           `**Kako vzpostaviti trajno povezavo, ki deluje vedno:**\n` +
-          `1. V n8n spremenite URL iz **Test** v **Production** (tako da iz URL-ja odstranite besedo \`-test\`, torej URL bo oblike \`/webhook/...\`).\n` +
-          `2. V zgornjem desnem kotu n8n delovnega toka vklopite stikalo **Active** (Aktivno), da aktivirate svoj workflow za stalno.\n\n` +
+          `1. Spremenite URL iz **Test** v **Production** (tako da iz URL-ja odstranite besedo \`-test\`, torej URL bo oblike \`/webhook/...\`).\n` +
+          `2. V zgornjem desnem kotu delovnega toka vklopite stikalo **Active** (Aktivno), da ga aktivirate za stalno.\n\n` +
           `**Prejeta napaka:**\n"${errMsg}"`;
       } else if (isWorkflowFailed500) {
-        userFriendlyMessage = `⚠️ n8n Workflow se je sprožil, vendar se je izvedba sesula!\n\n` +
-          `N8n strežnik je vrnil napako **"Workflow execution failed"** (Status 500). To pomeni, da je povezava narejena in se n8n odzove, vendar se v samem n8n delovnem toku (workflowu) pojavi napaka pri enem izmed vaših vozlišč (npr. napačne nastavitve v AI ali API vozlišču).\n\n` +
-          `**Kako odpraviti težavo v n8n:**\n` +
-          `1. Odprite vaš n8n urejevalnik.\n` +
+        userFriendlyMessage = `⚠️ Delovni tok se je sprožil, vendar se je izvedba sesula!\n\n` +
+          `Vozlišče delovnega toka je vrnilo napako **"Workflow execution failed"** (Status 500). To pomeni, da je povezava narejena in se odzove, vendar se v samem delovnem toku (workflowu) pojavi napaka pri enem izmed vaših vozlišč (npr. napačne nastavitve v AI ali API vozlišču).\n\n` +
+          `**Kako odpraviti težavo:**\n` +
+          `1. Odprite vaš urejevalnik delovnega toka.\n` +
           `2. V levem meniju kliknite na **Executions** (Zgodovina izvedb).\n` +
           `3. Poiščite zadnjo neuspešno izvedbo z rdečo oznako in kliknite nanjo, da vidite, katero vozlišče (Node) javi napako in zakaj.`;
       } else if (errMsg) {
@@ -415,10 +415,10 @@ export default function App() {
               
               <div className="space-y-4">
                 <h4 className="font-semibold text-sm text-blue-300 border-b border-slate-700 pb-1.5 uppercase tracking-wider">
-                  N8N Spletna Povezava (Webhook)
+                  Spletna Povezava (Webhook)
                 </h4>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  Ta aplikacija je nastavljena tako, da pošilja informacije neposredno v n8n spletno povezavo na naslovu:
+                  Ta aplikacija je nastavljena tako, da pošilja informacije neposredno v spletno povezavo na naslovu:
                 </p>
                 <div className="bg-slate-950 border border-slate-800 p-3 rounded-xl font-mono text-[11px] overflow-x-auto text-emerald-400">
                   {WEBHOOK_URL}
@@ -426,7 +426,7 @@ export default function App() {
                 <div className="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/50 space-y-1">
                   <p className="text-xs font-semibold text-white">CORS Prepreke (Pomembno):</p>
                   <p className="text-[11px] text-slate-300 leading-relaxed">
-                    Ker brskalniki privzeto blokirajo zunanje domene, n8n webhook zahteva omogočen CORS. V vašem nastavitvenem n8n webhook vozlišču (node) poskrbite, da je glava <code>Access-Control-Allow-Origin</code> nastavljena na <code>*</code> ali domeno te aplikacije, oziroma da so piškotki preverbe pravilno konfigurirani.
+                    Ker brskalniki privzeto blokirajo zunanje domene, spletna povezava zahteva omogočen CORS. V vašem nastavitvenem webhook vozlišču poskrbite, da je glava <code>Access-Control-Allow-Origin</code> nastavljena na <code>*</code> ali domeno te aplikacije, oziroma da so piškotki preverbe pravilno konfigurirani.
                   </p>
                 </div>
               </div>

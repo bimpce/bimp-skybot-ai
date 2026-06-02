@@ -125,7 +125,7 @@ export default function ChatInterface({
                 Klepet z asistentom
               </h3>
               <span className="text-[9px] bg-blue-500/30 text-blue-200 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
-                n8n Live
+                V živo
               </span>
             </div>
             <p className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold block -mt-0.5">Aktivni pogovor</p>
@@ -193,7 +193,7 @@ export default function ChatInterface({
                           <AlertCircle className="w-3 h-3" /> Tehnični nasvet glede CORS:
                         </p>
                         <p className="font-medium text-slate-650 leading-relaxed">
-                          N8n lahko povzroča CORS zavrnitve, če glave niso nastavljene na <code>Access-Control-Allow-Origin: *</code>. Če se to zgodi, bo integracija delovala preko obratnega proxy-ja ali ustreznih n8n CORS nastavitev v vaši instanci.
+                          Zavrnitve CORS se lahko pojavijo, če glave niso nastavljene na <code>Access-Control-Allow-Origin: *</code>. Če se to zgodi, bo integracija delovala preko obratnega proxy-ja ali ustreznih CORS nastavitev v vaši instanci.
                         </p>
                       </div>
                     )}
@@ -267,7 +267,7 @@ export default function ChatInterface({
             </button>
           </form>
           <p className="text-[10px] text-center text-slate-400 mt-2 font-bold uppercase tracking-wider">
-            Povezano z n8n AI Engine • Session: {messages.length > 0 ? messages[0].id.substring(0, 10) : 'sky_8291'}
+            Povezano z AI potovalnim pomočnikom • Session: {messages.length > 0 ? messages[0].id.substring(0, 10) : 'sky_8291'}
           </p>
         </div>
       </div>

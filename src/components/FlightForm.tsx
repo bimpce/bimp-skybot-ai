@@ -407,30 +407,30 @@ export default function FlightForm({ formState, onChange, showValidationErrors, 
         </div>
         
         <p className="text-[11px] text-slate-500 leading-relaxed px-1">
-          Spodnji gumbi avtomatično prevedejo zgornje parametre leta v strukturirano vprašanje za SkyBot AI asistent v n8n.
+          Spodnji gumbi avtomatično prevedejo zgornje parametre leta v strukturirano vprašanje za SkyBot AI asistent.
         </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+        <div className="grid grid-cols-1 gap-2.5 pt-1">
           <button
             type="button"
             id="prepare-prompt-btn"
             onClick={() => onGeneratePrompt(false)}
-            className="flex items-center justify-center gap-2 py-3 px-4 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 hover:text-slate-900 rounded-xl font-bold text-xs tracking-tight shadow-sm border border-slate-200 hover:border-slate-300 transition-all cursor-pointer select-none"
+            className="flex items-center justify-center gap-2 py-3 px-4 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 hover:text-slate-900 rounded-xl font-bold text-xs tracking-tight shadow-sm border border-slate-200 hover:border-slate-300 transition-all cursor-pointer select-none w-full"
             title="Sestavi sporočilo in ga vpiši v polje spodaj za klepet."
           >
-            <MessageSquare className="w-4 h-4 text-slate-500" />
-            <span>1. Pripravi vprašanje</span>
+            <MessageSquare className="w-4 h-4 text-slate-500 shrink-0" />
+            <span>1. Pripravi vprašanje v klepetu</span>
           </button>
 
           <button
             type="button"
             id="send-prompt-btn"
             onClick={() => onGeneratePrompt(true)}
-            className="flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-650 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-bold text-xs tracking-tight shadow-md hover:shadow-lg shadow-blue-500/10 active:scale-[0.98] transition-all cursor-pointer select-none"
-            title="Sestavi sporočilo in ga takoj pošlji n8n asistentu."
+            className="flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs tracking-tight shadow-md hover:shadow-lg shadow-blue-500/10 active:scale-[0.98] transition-all cursor-pointer select-none w-full"
+            title="Sestavi sporočilo in ga takoj pošlji asistentu."
           >
-            <Send className="w-3.5 h-3.5 text-blue-100" />
-            <span>2. Hitro pošlji v klepet</span>
+            <Send className="w-3.5 h-3.5 text-blue-100 shrink-0" />
+            <span>2. Hitro pošlji neposredno v klepet</span>
           </button>
         </div>
       </div>
